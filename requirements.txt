@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+requests
+streamlit
+pdfplumber
+google-genai
+python-dotenv
+rapidfuzz

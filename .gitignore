@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+.env
+
+# Mac
+.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Database (if any)
+*.sqlite
+*.db
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+*.tmp
