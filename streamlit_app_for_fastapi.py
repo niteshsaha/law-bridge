@@ -1,21 +1,40 @@
 import streamlit as st
 import requests
-import re
 
 API_BASE = "http://127.0.0.1:8000"
 
 # ==============================
-# 🔹 PREMIUM STYLING
+# 🔹 LOGIN
+# ==============================
+if "user" not in st.session_state:
+    st.session_state["user"] = None
+
+if not st.session_state["user"]:
+    st.title("🔐 Login")
+    username = st.text_input("Enter Username")
+
+    if st.button("Login"):
+        if username:
+            st.session_state["user"] = username
+            st.rerun()
+        else:
+            st.warning("Enter username")
+
+    st.stop()
+
+USER = st.session_state["user"]
+
+# ==============================
+# 🔹 CONFIG
 # ==============================
 st.set_page_config(page_title="Law Bridge", layout="wide")
 
+# ==============================
+# 🔹 STYLING
+# ==============================
 st.markdown("""
 <style>
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
-
+.block-container {padding-top: 2rem; padding-bottom: 2rem;}
 .card {
     padding: 20px;
     border-radius: 12px;
@@ -23,233 +42,249 @@ st.markdown("""
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     margin-bottom: 20px;
 }
-
-.section-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-
-.small-text {
-    color: #6b7280;
-    font-size: 13px;
-}
 </style>
 """, unsafe_allow_html=True)
 
 # ==============================
-# 🔹 HIGHLIGHT FUNCTION
+# 🔹 SIDEBAR
 # ==============================
+with st.sidebar:
+    st.title("⚖️ Law Bridge")
+    st.write(f"👤 {USER}")
 
-def highlight_text(text, added, removed):
-    highlighted = text
+    if st.button("Logout"):
+        st.session_state.clear()
+        st.rerun()
 
-    # Highlight added (green)
-    for word in added:
-        if word.strip():
-            pattern = re.escape(word)
-            highlighted = re.sub(
-                pattern,
-                f"<span style='background-color:#d4edda; padding:2px 4px; border-radius:4px;'>{word}</span>",
-                highlighted,
-                flags=re.IGNORECASE
-            )
+    st.markdown("---")
 
-    # Highlight removed (red)
-    for word in removed:
-        if word.strip():
-            pattern = re.escape(word)
-            highlighted = re.sub(
-                pattern,
-                f"<span style='background-color:#f8d7da; padding:2px 4px; border-radius:4px;'>{word}</span>",
-                highlighted,
-                flags=re.IGNORECASE
-            )
+    if st.button("🔄 Clear Result"):
+        st.session_state.pop("result", None)
+        st.rerun()
 
-    return highlighted
+    st.markdown("---")
+
+    try:
+        res = requests.get(f"{API_BASE}/drafts", params={"username": USER})
+        drafts = res.json() if res.status_code == 200 else []
+        st.write(f"Drafts: **{len(drafts)}**")
+    except:
+        st.caption("API error")
+
+    # ✅ AUTHOR
+    st.markdown("---")
+    st.markdown("### 👨‍💻 Author")
+    st.write("NITESH SAHA")
+    st.caption("AI-powered legal assistant")
 
 # ==============================
 # 🔹 DISPLAY RESULT
 # ==============================
 def show_result(data):
+
     st.markdown("## ⚖️ Section Mapping")
 
     ipc = data.get("ipc_section")
     bns = data.get("bns_section")
-    crpc = data.get("crpc_section")
-    bnss = data.get("bnss_section")
 
-    if ipc is not None or bns is not None:
-        st.success(f"IPC {ipc or '-'} → BNS {bns or '-'}")
-
-    elif crpc is not None or bnss is not None:
-        st.success(f"CRPC {crpc or '-'} → BNSS {bnss or '-'}")
-
-    else:
-        st.warning("Mapping not available")
+    st.success(f"IPC {ipc or '-'} → BNS {bns or '-'}")
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    # Title
     if data.get("title"):
-        st.markdown("### 📌 Title")
         st.write(data["title"])
 
-    # Status
-    st.markdown("### 🔍 Status")
+    st.info(data.get("meaning", ""))
 
-    if data["status"] == "Equivalent":
-        st.info("Equivalent Section")
+    # ✅ SAVE DRAFT WITH DUPLICATE CHECK
+    if st.button("💾 Save Draft", key="save_result_btn"):
+        try:
+            res_check = requests.get(
+                f"{API_BASE}/drafts",
+                params={"username": USER}
+            )
+            existing = res_check.json() if res_check.status_code == 200 else []
 
-    elif data["status"] == "Removed":
-        st.error("Removed in BNS")
+            title_val = (data.get("title") or "Untitled").strip()
+            content_val = data.get("meaning", "")
 
-    elif data["status"] == "New Section":
-        st.warning("New Section in BNS")
+            if any(d["title"].lower() == title_val.lower() for d in existing):
+                st.error("Draft already exists")
+            else:
+                res = requests.post(
+                    f"{API_BASE}/draft",
+                    params={"username": USER},
+                    json={
+                        "title": title_val,
+                        "content": content_val
+                    }
+                )
 
-    else:
-        st.write(data["status"])
+                if res.status_code == 200:
+                    st.success("Saved ✅")
+                else:
+                    st.error("Save failed")
+
+        except:
+            st.error("Error saving draft")
+
+        st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # Meaning
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### 🤖 Meaning")
-    st.info(data["meaning"])
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ==============================
-# 🔹 SIDEBAR (PREMIUM TOUCH)
-# ==============================
-with st.sidebar:
-    st.title("⚖️ Law Bridge")
-    st.markdown("### 👨‍💻 Author")
-    st.write("NITESH SAHA")
-    st.markdown("---")
-    st.caption("AI-powered legal comparison system")
-
 
 # ==============================
 # 🔹 HEADER
 # ==============================
 st.title("⚖️ Law Bridge")
-st.caption("Compare Indian laws and understand changes instantly with AI")
 
-st.markdown("---")
-
-# ==============================
-# 🔹 MODE SELECT
-# ==============================
 mode = st.radio(
-    "Select Mode",
-    ["Section Lookup", "Search"],
+    "Mode",
+    ["Section Lookup", "Search", "Drafts"],
     horizontal=True
 )
 
-st.markdown("## 🔍 Input")
+# ✅ FIX: clear result when switching mode
+prev_mode = st.session_state.get("mode")
+if prev_mode != mode:
+    st.session_state.pop("result", None)
+
+st.session_state["mode"] = mode
 
 # ==============================
-# 🔹 SECTION LOOKUP
+# 🔹 LOOKUP
 # ==============================
 if mode == "Section Lookup":
 
-    col1, col2 = st.columns([2, 3])
+    section = st.text_input("Section")
+    code = st.selectbox("Code", ["IPC", "BNS", "BNSS", "CRPC"])
 
-    with col1:
-        section = st.text_input("Section Number", placeholder="e.g. 302")
+    if st.button("Get Result"):
+        res = requests.get(f"{API_BASE}/law/{code}/{section}")
 
-    with col2:
-        code = st.selectbox(
-            "Law Code",
-            ["IPC", "BNS", "BNSS", "CrPC", "BSA", "IEA"]
-        )
-
-    if st.button("🚀 Get Result", use_container_width=True):
-
-        if not section:
-            st.warning("Enter a section number")
+        if res.status_code == 200:
+            st.session_state["result"] = res.json()
         else:
-            with st.spinner("Processing..."):
-                try:
-                    res = requests.get(f"{API_BASE}/law/{code}/{section}")
+            st.error("API error")
 
-                    if res.status_code == 200:
-                        data = res.json()
-
-                        if "error" in data:
-                            st.error(data["error"])
-                        else:
-                            show_result(data)
-                    else:
-                        st.error("API error")
-
-                except Exception as e:
-                    st.error(str(e))
+    if "result" in st.session_state:
+        show_result(st.session_state["result"])
 
 # ==============================
-# 🔹 SEARCH MODE
+# 🔹 SEARCH
+# ==============================
+elif mode == "Search":
+
+    q = st.text_input("Search")
+
+    if st.button("Search"):
+        res = requests.get(f"{API_BASE}/search?q={q}")
+
+        if res.status_code == 200:
+            results = res.json().get("results", [])
+
+            if not results:
+                st.warning("No results found")
+
+            for i, item in enumerate(results):
+                st.write(item.get("title"))
+
+                if st.button("View", key=f"view_{i}"):
+                    full = requests.get(
+                        f"{API_BASE}/law/{item['code']}/{item['section_number']}"
+                    ).json()
+
+                    st.session_state["result"] = full
+                    st.session_state["mode"] = "Section Lookup"
+                    st.rerun()
+        else:
+            st.error("Search failed")
+
+# ==============================
+# 🔹 DRAFTS
 # ==============================
 else:
-    query = st.text_input("Search Keyword", placeholder="e.g. murder")
 
-    if st.button("🔍 Search", use_container_width=True):
+    tab1, tab2 = st.tabs(["Create", "View"])
 
-        if not query:
-            st.warning("Enter a keyword")
-        else:
-            with st.spinner("Searching..."):
+    # ------------------
+    # CREATE
+    # ------------------
+    with tab1:
+        title = st.text_input("Title")
+        content = st.text_area("Content")
+
+        if st.button("Save Draft"):
+
+            if not title or not content:
+                st.warning("Enter title and content")
+            else:
                 try:
-                    res = requests.get(f"{API_BASE}/search?q={query}")
+                    res_check = requests.get(
+                        f"{API_BASE}/drafts",
+                        params={"username": USER}
+                    )
+                    existing = res_check.json() if res_check.status_code == 200 else []
 
-                    if res.status_code == 200:
-                        data = res.json()
-
-                        # 🔥 DEBUG (remove later)
-                        #st.write(data)
-
-                        results = data.get("results", [])
-
-                        if not results:
-                            st.warning("No results found")
-                        else:
-                            st.markdown("## 📋 Results")
-
-                            for i, item in enumerate(results):
-
-                                ipc = item.get("ipc_section") or "-"
-                                bns = item.get("section_number") or "-"
-                                title = item.get("title", "No title")
-
-                                label = f"IPC {ipc} → BNS {bns}"
-
-                                st.markdown('<div class="card">', unsafe_allow_html=True)
-
-                                st.markdown(f"**{label}**")
-                                st.caption(title)
-
-                                if st.button("View", key=f"{i}"):
-
-                                    full = requests.get(
-                                        f"{API_BASE}/law/{item['code']}/{item['section_number']}"
-                                    ).json()
-
-                                    show_result(full)
-
-                                st.markdown('</div>', unsafe_allow_html=True)
-
+                    if any(d["title"].lower() == title.lower() for d in existing):
+                        st.error("Draft already exists")
                     else:
-                        st.error("API error")
+                        res = requests.post(
+                            f"{API_BASE}/draft",
+                            params={"username": USER},
+                            json={"title": title, "content": content}
+                        )
 
-                except Exception as e:
-                    st.error(str(e))
+                        if res.status_code == 200:
+                            st.success("Saved ✅")
+                        else:
+                            st.error("Save failed")
 
+                except:
+                    st.error("Error saving draft")
+
+                st.rerun()
+
+    # ------------------
+    # VIEW
+    # ------------------
+    with tab2:
+        res = requests.get(
+            f"{API_BASE}/drafts",
+            params={"username": USER}
+        )
+
+        drafts = res.json() if res.status_code == 200 else []
+
+        if not drafts:
+            st.info("No drafts available")
+        else:
+            for d in drafts:
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+
+                st.markdown(f"### {d['title']}")
+                st.write(d["content"])
+
+                if st.button("🗑️ Delete", key=f"del_{d['id']}"):
+                    try:
+                        res = requests.delete(
+                            f"{API_BASE}/draft/{d['id']}",
+                            params={"username": USER}
+                        )
+
+                        if res.status_code == 200:
+                            st.success("Deleted")
+                        else:
+                            st.error("Delete failed")
+
+                    except:
+                        st.error("Delete failed")
+
+                    st.rerun()
+
+                st.markdown('</div>', unsafe_allow_html=True)
 
 # ==============================
 # 🔹 FOOTER
 # ==============================
 st.markdown("---")
-st.markdown(
-    "<center style='color: grey; font-size:14px;'>For informational purposes only</center>",
-    unsafe_allow_html=True
-)
+st.caption("For informational purposes only")
