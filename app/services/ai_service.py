@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import requests
 import logging
 from google import genai
+import streamlit as st
 
 # ==============================
 # 🔹 LOAD ENV + LOGGING
@@ -12,7 +13,21 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-AI_PROVIDER = os.getenv("AI_PROVIDER", "ollama")
+# 🔥 Safe import (avoid crash)
+try:
+    import streamlit as st
+    API_KEY = st.secrets.get("API_KEY")
+    AI_PROVIDER = st.secrets.get("AI_PROVIDER", "ollama")
+except Exception:
+    API_KEY = None
+    AI_PROVIDER = None
+
+# 🔥 Fallback to .env
+if not API_KEY:
+    API_KEY = os.getenv("API_KEY")
+
+if not AI_PROVIDER:
+    AI_PROVIDER = os.getenv("AI_PROVIDER", "ollama")
 
 logger.info(f"[AI] Provider: {AI_PROVIDER}")
 
@@ -20,7 +35,7 @@ logger.info(f"[AI] Provider: {AI_PROVIDER}")
 # 🔹 GEMINI SETUP (NEW SDK)
 # ==============================
 if AI_PROVIDER == "gemini":
-    client = genai.Client(api_key=os.getenv("API_KEY"))
+    client = genai.Client(api_key=API_KEY)
     GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 
 

@@ -240,6 +240,6 @@ else:
 # ==============================
 st.markdown("---")
 st.markdown(
-    "<center style='color: grey; font-size:14px;'>Built with ❤️ by <b>NITESH SAHA</b></center>",
+    "<center style='color: grey; font-size:14px;'>For informational purposes only</center>",
     unsafe_allow_html=True
 )

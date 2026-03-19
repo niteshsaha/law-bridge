@@ -56,11 +56,40 @@ def show_result(data):
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==============================
-# 🔹 SIDEBAR
+# 🔹 SIDEBAR (ENHANCED)
 # ==============================
 with st.sidebar:
     st.title("⚖️ Law Bridge")
-    st.write("NITESH SAHA")
+
+    st.markdown("### 🔍 What this app does")
+    st.caption(
+        "Quickly find mapping between IPC and BNS sections and understand meaning in simple English using AI."
+    )
+
+    st.markdown("---")
+
+    st.markdown("### ⚡ Features")
+    st.markdown("""
+    - 🔁 IPC ↔ BNS Mapping  
+    - 🧠 AI-powered explanation  
+    - 🔎 Smart keyword search  
+    - 📊 Section status (Equivalent / New / Removed)
+    """)
+
+    st.markdown("---")
+
+    st.markdown("### 📘 How to use")
+    st.caption(
+        "1. Enter section number\n"
+        "2. Select IPC or BNS\n"
+        "3. Click Get Result\n"
+        "4. Or search by keyword"
+    )
+
+    st.markdown("---")
+
+    st.markdown("### 👨‍💻 Author")
+    st.write("**NITESH SAHA**")
 
 # ==============================
 # 🔹 HEADER
@@ -137,4 +166,4 @@ else:
 # 🔹 FOOTER
 # ==============================
 st.markdown("---")
-st.markdown("<center>Built with ❤️ by NITESH SAHA</center>", unsafe_allow_html=True)
+st.markdown("<center>For informational purposes only</center>", unsafe_allow_html=True)
