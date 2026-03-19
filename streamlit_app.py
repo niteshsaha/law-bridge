@@ -29,7 +29,21 @@ st.markdown("""
 def show_result(data):
     st.markdown("## ⚖️ Section Mapping")
 
-    st.success(f"IPC {data['ipc_section'] or '-'} → BNS {data['bns_section'] or '-'}")
+    #st.success(f"IPC {data['ipc_section'] or '-'} → BNS {data['bns_section'] or '-'}")
+
+    ipc = data.get("ipc_section")
+    bns = data.get("bns_section")
+    crpc = data.get("crpc_section")
+    bnss = data.get("bnss_section")
+
+    if ipc is not None or bns is not None:
+        st.success(f"IPC {ipc or '-'} → BNS {bns or '-'}")
+
+    elif crpc is not None or bnss is not None:
+        st.success(f"CRPC {crpc or '-'} → BNSS {bnss or '-'}")
+
+    else:
+        st.warning("Mapping not available")
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
@@ -110,7 +124,7 @@ if mode == "Section Lookup":
         section = st.text_input("Section")
 
     with col2:
-        code = st.selectbox("Code", ["IPC", "BNS"])
+        code = st.selectbox("Code", ["IPC", "BNS", "CRPC", "BNSS"])
 
     if st.button("Get Result"):
 

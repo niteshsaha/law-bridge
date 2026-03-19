@@ -31,6 +31,8 @@ def get_law(code: str, section: str):
     return {
         "ipc_section": result["ipc_section"],
         "bns_section": result["bns_section"],
+        "crpc_section": result.get("crpc_section"),
+        "bnss_section": result.get("bnss_section"),
         "title": result["title"],
         "status": result["status"],
         "meaning": meaning
