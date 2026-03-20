@@ -1,105 +1,140 @@
-import json
+import sqlite3
 import os
 from datetime import datetime
 import uuid
 
-# ==============================
-# 🔹 BASE PATH (per-user storage)
-# ==============================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "../../data/drafts")
-
-os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(BASE_DIR, "../../data/drafts.db")
 
 
 # ==============================
-# 🔹 HELPERS
+# 🔹 DB INIT
 # ==============================
-def get_user_file(username):
-    return os.path.join(DATA_DIR, f"{username}.json")
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS drafts (
+        id TEXT PRIMARY KEY,
+        username TEXT,
+        title TEXT,
+        content TEXT,
+        created_at TEXT
+    )
+    """)
+
+    conn.commit()
+    conn.close()
 
 
-def load_drafts(username):
-    file_path = get_user_file(username)
-
-    if not os.path.exists(file_path):
-        return []
-
-    try:
-        with open(file_path) as f:
-            content = f.read().strip()
-            if not content:
-                return []
-            return json.loads(content)
-    except Exception:
-        return []
-
-
-def save_drafts(username, drafts):
-    file_path = get_user_file(username)
-
-    with open(file_path, "w") as f:
-        json.dump(drafts, f, indent=2)
+init_db()
 
 
 # ==============================
 # 🔹 CREATE
 # ==============================
-def add_draft(username, title, content, tags=None):
-    drafts = load_drafts(username)
+def add_draft(username, title, content):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
-    # 🔥 Prevent duplicate title
-    if any(d["title"].lower() == title.lower() for d in drafts):
-        return {"error": "Draft already exists"}
+    # 🔥 CHECK LIMIT (10 drafts per user)
+    cursor.execute("""
+        SELECT COUNT(*) FROM drafts WHERE username = ?
+    """, (username,))
+    
+    count = cursor.fetchone()[0]
 
-    draft = {
-        "id": str(uuid.uuid4()),
-        "title": title,
-        "content": content,
-        "tags": tags or [],
-        "created_at": datetime.now().isoformat()
-    }
+    if count >= 10:
+        conn.close()
+        return {"error": "Draft limit reached (max 10)"}
 
-    drafts.append(draft)
-    save_drafts(username, drafts)
+    # 🔥 INSERT
+    draft_id = str(uuid.uuid4())
 
-    return draft
+    cursor.execute("""
+        INSERT INTO drafts (id, username, title, content, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    """, (draft_id, username, title, content, datetime.now().isoformat()))
+
+    conn.commit()
+    conn.close()
+
+    return {"id": draft_id, "message": "Created"}
+
+
+# ==============================
+# 🔹 GET ALL
+# ==============================
+def load_drafts(username):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, title, content, created_at
+        FROM drafts
+        WHERE username = ?
+        ORDER BY created_at DESC
+    """, (username,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": r[0],
+            "title": r[1],
+            "content": r[2],
+            "created_at": r[3]
+        }
+        for r in rows
+    ]
 
 
 # ==============================
 # 🔹 DELETE
 # ==============================
 def delete_draft(username, draft_id):
-    drafts = load_drafts(username)
-    drafts = [d for d in drafts if d["id"] != draft_id]
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
-    save_drafts(username, drafts)
+    cursor.execute("""
+        DELETE FROM drafts
+        WHERE id = ? AND username = ?
+    """, (draft_id, username))
+
+    conn.commit()
+    conn.close()
+
     return {"message": "Deleted"}
-
-
-# ==============================
-# 🔹 UPDATE
-# ==============================
-def update_draft(username, draft_id, title, content):
-    drafts = load_drafts(username)
-
-    for d in drafts:
-        if d["id"] == draft_id:
-            d["title"] = title
-            d["content"] = content
-
-    save_drafts(username, drafts)
-    return {"message": "Updated"}
 
 
 # ==============================
 # 🔹 SEARCH
 # ==============================
 def search_drafts(username, query):
-    drafts = load_drafts(username)
-    query = query.lower()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    query = f"%{query.lower()}%"
+
+    cursor.execute("""
+        SELECT id, title, content, created_at
+        FROM drafts
+        WHERE username = ?
+        AND (LOWER(title) LIKE ? OR LOWER(content) LIKE ?)
+        ORDER BY created_at DESC
+    """, (username, query, query))
+
+    rows = cursor.fetchall()
+    conn.close()
 
     return [
-        d for d in drafts
-        if query in d["title"].lower() or query in d["content"].lower()
+        {
+            "id": r[0],
+            "title": r[1],
+            "content": r[2],
+            "created_at": r[3]
+        }
+        for r in rows
     ]

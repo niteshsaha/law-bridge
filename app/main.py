@@ -5,7 +5,6 @@ from app.services.draft_service import (
     load_drafts,
     add_draft,
     delete_draft,
-    update_draft,
     search_drafts
 )
 
@@ -77,42 +76,27 @@ def search_law(q: str):
 # ==============================
 # 🔹 DRAFT APIs (MULTI-USER)
 # ==============================
-
-# ✅ GET ALL DRAFTS
-@app.get("/drafts")
-def get_all_drafts(username: str = Query(...)):
-    return load_drafts(username)
-
-
-# ✅ SEARCH DRAFTS
-@app.get("/drafts/search")
-def search_draft(q: str, username: str = Query(...)):
-    return search_drafts(username, q)
-
-
-# ✅ CREATE
 @app.post("/draft")
-def create_draft(data: dict, username: str = Query(...)):
-    return add_draft(
+def create_draft(username: str, data: dict):
+    result = add_draft(
         username,
-        data.get("title"),
-        data.get("content"),
-        data.get("tags")
-    )
-
-
-# ✅ UPDATE
-@app.put("/draft/{draft_id}")
-def edit_draft(draft_id: str, data: dict, username: str = Query(...)):
-    return update_draft(
-        username,
-        draft_id,
         data.get("title"),
         data.get("content")
     )
 
+    if "error" in result:
+        return {"status": "error", "message": result["error"]}
 
-# ✅ DELETE
+    return {"status": "success", "data": result}
+
+@app.get("/drafts")
+def get_all_drafts(username: str):
+    return load_drafts(username)
+
 @app.delete("/draft/{draft_id}")
-def remove_draft(draft_id: str, username: str = Query(...)):
+def remove_draft(draft_id: str, username: str):
     return delete_draft(username, draft_id)
+
+@app.get("/drafts/search")
+def search_draft(username: str, q: str):
+    return search_drafts(username, q)
