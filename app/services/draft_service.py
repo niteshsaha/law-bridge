@@ -3,9 +3,10 @@ import os
 from datetime import datetime
 import uuid
 
-# 🔥 detect render environment
-DATA_DIR = os.environ.get("DATA_DIR", "data")
+# Always use local folder
+DATA_DIR = "data"
 
+# create folder if not exists
 os.makedirs(DATA_DIR, exist_ok=True)
 
 DB_PATH = os.path.join(DATA_DIR, "drafts.db")
