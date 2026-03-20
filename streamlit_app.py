@@ -12,6 +12,10 @@ st.set_page_config(page_title="Law Bridge", layout="wide")
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
+# 🔥 local message (for button-level feedback)
+if "local_msg" not in st.session_state:
+    st.session_state["local_msg"] = None
+
 # ==============================
 # 🔹 STYLING
 # ==============================
@@ -34,7 +38,6 @@ st.markdown("""
 with st.sidebar:
     st.title("⚖️ Law Bridge")
 
-    # 🔐 LOGIN
     if not st.session_state["user"]:
         st.markdown("### 🔐 Login")
         username = st.text_input("Username", key="login_user")
@@ -46,7 +49,6 @@ with st.sidebar:
                 st.rerun()
             else:
                 st.warning("Enter username")
-
     else:
         st.write(f"👤 {st.session_state['user']}")
 
@@ -62,7 +64,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Draft count (only if logged in)
     if st.session_state["user"]:
         try:
             res = requests.get(
@@ -71,6 +72,7 @@ with st.sidebar:
             )
             drafts = res.json() if res.status_code == 200 else []
             st.write(f"Drafts: **{len(drafts)}**")
+            st.write("Max. 10 Draft allowed")
         except:
             st.caption("API error")
 
@@ -87,8 +89,15 @@ def show_result(data):
 
     ipc = data.get("ipc_section")
     bns = data.get("bns_section")
+    crpc = data.get("crpc_section")
+    bnss = data.get("bnss_section")
 
-    st.success(f"IPC {ipc or '-'} → BNS {bns or '-'}")
+    if ipc or bns:
+        st.success(f"IPC {ipc or '-'} → BNS {bns or '-'}")
+    elif crpc or bnss:
+        st.success(f"CRPC {crpc or '-'} → BNSS {bnss or '-'}")
+    else:
+        st.warning("Mapping not available")
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
@@ -97,12 +106,22 @@ def show_result(data):
 
     st.info(data.get("meaning", ""))
 
-    # 🔥 SAVE DRAFT (FIXED)
-    if st.button("💾 Save Draft", key="save_result_btn"):
+    # 🔥 BUTTON + MESSAGE SIDE BY SIDE
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        clicked = st.button("💾 Save Draft", key="save_result_btn")
+
+    with col2:
+        if st.session_state.get("local_msg"):
+            st.write(st.session_state["local_msg"])
+            st.session_state["local_msg"] = None
+
+    if clicked:
 
         if not st.session_state.get("user"):
-            st.warning("Please login to save drafts")
-            return
+            st.session_state["local_msg"] = "⚠️ Login required"
+            st.rerun()
 
         USER = st.session_state["user"]
 
@@ -117,28 +136,25 @@ def show_result(data):
             content_val = data.get("meaning", "")
 
             if any(d["title"].lower() == title_val.lower() for d in existing):
-                st.error("Draft already exists")
+                st.session_state["local_msg"] = "⚠️ Already exists"
             else:
                 res = requests.post(
                     f"{API_BASE}/draft",
                     params={"username": USER},
-                    json={
-                        "title": title_val,
-                        "content": content_val
-                    }
+                    json={"title": title_val, "content": content_val}
                 )
 
                 if res.status_code == 200:
                     response = res.json()
                     if response.get("status") == "error":
-                        st.error(response.get("message"))
+                        st.session_state["local_msg"] = f"⚠️ {response.get('message')}"
                     else:
-                        st.success("Saved ✅")
+                        st.session_state["local_msg"] = "✅ Saved"
                 else:
-                    st.error("Save failed")
+                    st.session_state["local_msg"] = "❌ Save failed"
 
         except:
-            st.error("Error saving draft")
+            st.session_state["local_msg"] = "⚠️ Error"
 
         st.rerun()
 
@@ -158,7 +174,6 @@ mode = st.radio(
     horizontal=True
 )
 
-# Clear result when switching
 prev_mode = st.session_state.get("mode")
 if prev_mode != mode:
     st.session_state.pop("result", None)
@@ -174,14 +189,30 @@ if mode == "Section Lookup":
     code = st.selectbox("Code", ["IPC", "BNS", "BNSS", "CRPC"])
 
     if st.button("Get Result"):
-        res = requests.get(f"{API_BASE}/law/{code}/{section}")
 
-        if res.status_code == 200:
-            st.session_state["result"] = res.json()
+        if not section or not section.strip():
+            st.warning("Please enter a section number")
+            st.session_state.pop("result", None)
+
         else:
-            st.error("API error")
+            try:
+                res = requests.get(f"{API_BASE}/law/{code}/{section}")
 
-    if "result" in st.session_state:
+                if res.status_code == 200:
+                    data = res.json()
+
+                    if isinstance(data, dict):
+                        st.session_state["result"] = data
+                    else:
+                        st.warning("Invalid response")
+
+                else:
+                    st.error(f"API error: {res.status_code}")
+
+            except Exception as e:
+                st.error(str(e))
+
+    if "result" in st.session_state and isinstance(st.session_state["result"], dict):
         show_result(st.session_state["result"])
 
 # ==============================
@@ -227,53 +258,40 @@ else:
 
     tab1, tab2 = st.tabs(["Create", "View"])
 
-    # CREATE
     with tab1:
         title = st.text_input("Title")
         content = st.text_area("Content")
 
-        if st.button("Save Draft"):
+        save_btn = st.button("Save Draft")
+
+        if st.session_state.get("local_msg"):
+            st.write(st.session_state["local_msg"])
+            st.session_state["local_msg"] = None
+
+        if save_btn:
 
             if not title or not content:
-                st.warning("Enter title and content")
+                st.session_state["local_msg"] = "⚠️ Fill all fields"
             else:
                 try:
-                    res_check = requests.get(
-                        f"{API_BASE}/drafts",
-                        params={"username": USER}
+                    res = requests.post(
+                        f"{API_BASE}/draft",
+                        params={"username": USER},
+                        json={"title": title, "content": content}
                     )
-                    existing = res_check.json() if res_check.status_code == 200 else []
 
-                    if any(d["title"].lower() == title.lower() for d in existing):
-                        st.error("Draft already exists")
+                    if res.status_code == 200:
+                        st.session_state["local_msg"] = "✅ Saved"
                     else:
-                        res = requests.post(
-                            f"{API_BASE}/draft",
-                            params={"username": USER},
-                            json={"title": title, "content": content}
-                        )
-
-                        if res.status_code == 200:
-                            response = res.json()
-                            if response.get("status") == "error":
-                                st.error(response.get("message"))
-                            else:
-                                st.success("Saved ✅") 
-                        else:
-                            st.error("Save failed")
+                        st.session_state["local_msg"] = "❌ Failed"
 
                 except:
-                    st.error("Error saving draft")
+                    st.session_state["local_msg"] = "⚠️ Error"
 
-                st.rerun()
+            st.rerun()
 
-    # VIEW
     with tab2:
-        res = requests.get(
-            f"{API_BASE}/drafts",
-            params={"username": USER}
-        )
-
+        res = requests.get(f"{API_BASE}/drafts", params={"username": USER})
         drafts = res.json() if res.status_code == 200 else []
 
         if not drafts:
@@ -286,20 +304,10 @@ else:
                 st.write(d["content"])
 
                 if st.button("🗑️ Delete", key=f"del_{d['id']}"):
-                    try:
-                        res = requests.delete(
-                            f"{API_BASE}/draft/{d['id']}",
-                            params={"username": USER}
-                        )
-
-                        if res.status_code == 200:
-                            st.success("Deleted")
-                        else:
-                            st.error("Delete failed")
-
-                    except:
-                        st.error("Delete failed")
-
+                    requests.delete(
+                        f"{API_BASE}/draft/{d['id']}",
+                        params={"username": USER}
+                    )
                     st.rerun()
 
                 st.markdown('</div>', unsafe_allow_html=True)

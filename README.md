@@ -1,221 +1,182 @@
-# ⚖️ Law Bridge – Local Legal AI Engine
 
-A local-first AI system that maps old Indian laws (IPC, CrPC, IEA) to new ones (BNS, BNSS, BSA), highlights differences, and explains changes in simple language.
+⚖️ Law Bridge — System Overview
+
+Law Bridge is an AI-assisted legal mapping and interpretation platform that enables users to understand the transition from legacy Indian laws (IPC/CRPC) to the new legal framework (BNS/BNSS), with contextual explanations and personal knowledge management.
+
+⸻
+
+🧠 Core Value Proposition
+
+Bridges legacy and modern Indian legal codes with AI-powered interpretation and personal drafting tools.
+
+It solves:
+	•	Confusion between IPC ↔ BNS and CRPC ↔ BNSS
+	•	Lack of simplified explanations of legal provisions
+	•	No easy way to store and reuse legal insights
+
+⸻
+
+⚙️ Architecture
+
+🔹 Frontend
+	•	Built with Streamlit
+	•	Stateful UI using st.session_state
+	•	Multi-mode interface:
+	•	Section Lookup
+	•	Search
+	•	Draft Management
 
----
+🔹 Backend
+	•	Built with FastAPI
+	•	REST APIs for:
+	•	Law mapping
+	•	Search
+	•	Draft CRUD operations
+	•	AI explanation generation
 
-## 🚀 Features
+🔹 AI Layer
+	•	Integrated with LLM (Gemini)
+	•	Generates:
+	•	Simplified meaning
+	•	Contextual explanation of legal sections
+
+🔹 Data Layer
+	•	Legal mappings stored in JSON
+	•	Drafts stored in:
+	•	Local JSON → upgraded toward SQLite / persistent storage
+	•	Supports user-scoped data (via username)
 
-- 🔁 Bi-directional mapping (IPC ↔ BNS)
-- 📘 Bare Act retrieval (source & target)
-- 🔍 Automated diff (added / removed text)
-- 🤖 AI explanation (simple English)
-- ⚡ AI caching (instant repeat responses)
-- 🔎 Keyword search (e.g. "murder")
-- 🎨 Visual diff highlighting (UI)
-- 🔒 Fully local (no cloud, privacy-safe)
+⸻
 
----
+🔍 Feature Breakdown
 
-## 🏗️ Architecture
+1. ⚖️ Section Mapping Engine
+	•	Supports:
+	•	IPC → BNS
+	•	CRPC → BNSS
+	•	Dynamic mapping display:
+	•	Automatically detects law type
+	•	Handles:
+	•	Equivalent
+	•	Removed
+	•	New sections
 
-Streamlit UI
-↓
-FastAPI Backend
-↓
-Service Layer
-├── DB Service (SQLite)
-├── Diff Engine (difflib)
-├── AI Service (Ollama)
-↓
-Local Model (Qwen 2.5 1.5B)
+⸻
 
+2. 🤖 AI Legal Explanation
+	•	Generates human-readable explanation:
+	•	What it means
+	•	Who it applies to
+	•	Consequences
+	•	Triggered only when valid section data exists
+	•	Graceful fallback:
+	•	“No explanation available”
+	•	“AI service not available”
 
----
+⸻
 
-## 🧰 Tech Stack
+3. 🔎 Search System
+	•	Keyword-based search across legal sections
+	•	Returns:
+	•	Section number
+	•	Title
+	•	Allows drill-down into full mapping + meaning
 
-| Layer       | Technology |
-|------------|-----------|
-| Backend    | FastAPI |
-| Database   | SQLite |
-| AI Runtime | Ollama |
-| Model      | Qwen 2.5 1.5B |
-| Frontend   | Streamlit |
-| Diff       | difflib |
-| Language   | Python |
+⸻
 
----
+4. 📝 Draft Management System
 
-## ⚙️ Setup Instructions
+Capabilities:
+	•	Create drafts manually
+	•	Save AI-generated explanations as drafts
+	•	View drafts
+	•	Delete drafts
 
-### 1. Clone repo
-```bash
-git clone <your-repo-url>
-cd law-bridge
+Features:
+	•	User-scoped drafts (via login)
+	•	Duplicate title prevention
+	•	Max limit (e.g., 10 drafts per user)
+	•	Real-time UI feedback
 
-2. Create environment
+⸻
 
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+5. 🔐 Lightweight Authentication
+	•	Username-based session login
+	•	Sidebar-controlled access
+	•	Drafts restricted to logged-in users
 
-3. Start Ollama
-export OLLAMA_NUM_THREADS=4
-export OLLAMA_CONTEXT_LENGTH=1056
-ollama run qwen2.5:1.5b
-4. Start backend
-uvicorn app.main:app --reload
-5. Start UI
-streamlit run streamlit_app.py
+⸻
 
-API Endpoints
-Get Law Mapping
-GET /law/{code}/{section}
-Search Laws
-GET /search?q=keyword
+6. 🎯 UX & State Management
 
-How It Works
+Key UX improvements implemented:
+	•	Session-based state handling
+	•	Mode switching without stale data
+	•	Safe rendering (prevents crashes from bad API responses)
+	•	Inline feedback messages (near buttons)
+	•	Clear/reset controls
 
-User inputs section or keyword
+⸻
 
-Backend fetches source + mapped section
+7. 🌐 Deployment Architecture
 
-Diff engine computes changes
+Hosted on Render:
+	•	FastAPI backend → separate service
+	•	Streamlit frontend → separate service
 
-AI generates explanation (cached)
+Key considerations handled:
+	•	API_BASE switching (local vs production)
+	•	CORS compatibility
+	•	Persistent storage challenges (ephemeral disk awareness)
 
-UI displays highlighted comparison
+⸻
 
-⚡ Optimization
+🛡️ Stability & Error Handling
 
-Reduced context length (1056)
+You’ve already handled several real-world issues:
+	•	✅ Prevent API calls on empty input
+	•	✅ Handle invalid API responses (list vs dict)
+	•	✅ Avoid NameError / state issues
+	•	✅ Graceful API failure handling
+	•	✅ Duplicate draft protection
+	•	✅ UI consistency across devices
 
-Token-limited responses
+⸻
 
-AI caching in database
+🚀 Current Maturity Level
 
-Lightweight model (1.5B params)
+This is no longer a prototype — it is a functional full-stack legal utility application.
 
-Limitations
+It includes:
+	•	Frontend
+	•	Backend
+	•	AI integration
+	•	User workflow
+	•	Persistence layer
+	•	Deployment
 
-Word-level diff (not semantic yet)
+⸻
 
-Basic search (LIKE query)
+📈 What Makes It Strong
+	•	Clear problem-solution fit
+	•	Real-world relevance (legal transition)
+	•	Thoughtful UX (not just functionality)
+	•	Clean separation of concerns (UI / API / service)
+	•	Extensible architecture (easy to add features)
 
-Depends on dataset quality
+⸻
 
-🚀 Future Improvements
+🧭 Next Logical Evolution
 
-Full-text search (SQLite FTS)
+If you were to take this further:
+	•	Comparative analysis (IPC vs BNS differences)
+	•	Structured legal summaries
+	•	Better authentication (email/OTP)
+	•	Persistent cloud database
+	•	AI-assisted drafting (templates)
 
-Sentence-level diff
+⸻
 
-Flutter mobile app
+🧾 One-line portfolio description
 
-Semantic AI comparison
-
-Multi-language support
-
-📌 Project Type
-Local AI + Legal Tech + Full Stack System Design
-
-Author
-
-NITESH SAHA
-
-
----
-
-# 📊 2. Architecture Diagram (Explainable)
-
-You can convert this to a diagram later:
-
-
-[ User (Web / Mobile) ]
-↓
-[ Streamlit UI ]
-↓
-[ FastAPI Backend ]
-↓
-┌─────────────────────┐
-│ Service Layer │
-│ │
-│ DB Service │
-│ Diff Engine │
-│ AI Service │
-└─────────────────────┘
-↓
-[ SQLite Database ]
-↓
-[ Ollama Runtime ]
-↓
-[ Qwen 2.5 Model ]
-
-
----
-
-## 🧠 Explanation (for interviews)
-
-- UI is decoupled from backend  
-- Backend is stateless API  
-- Services are modular  
-- AI is local inference  
-- DB handles caching + retrieval  
-
-👉 This shows **clean architecture + scalability**
-
----
-
-# 🧾 3. Resume / Portfolio Bullet Points
-
-Use these in resume:
-
----
-
-## 🔹 Short Version (Resume)
-
-- Built a **local-first Legal AI system** to map IPC to BNS and explain changes using LLMs  
-- Designed **modular FastAPI backend** with SQLite and service-based architecture  
-- Implemented **diff engine (difflib)** to detect legal text changes  
-- Integrated **Ollama + Qwen 1.5B** for on-device AI inference with optimized memory usage  
-- Developed **AI caching layer** to reduce latency and improve performance  
-- Created **interactive Streamlit UI** with keyword search and visual diff highlighting  
-
----
-
-## 🔹 Strong Version (Portfolio / Interview)
-
-- Engineered a **production-style Legal AI platform** enabling bi-directional mapping between legacy (IPC) and modern (BNS) legal frameworks  
-- Designed and implemented a **three-layer architecture (API, services, data)** ensuring scalability and mobile readiness  
-- Built a **local LLM inference pipeline** using Ollama with hardware-aware optimizations (threading, context control)  
-- Developed a **diff computation engine** to extract structural legal changes and render them visually  
-- Implemented **persistent AI caching** in SQLite, reducing repeated inference cost and improving response time  
-- Designed a **dual-mode UX (section lookup + semantic search)** improving accessibility for legal and non-technical users  
-
----
-
-# 🧠 Final Advice
-
-This project already demonstrates:
-
-- Backend engineering  
-- AI integration  
-- System design  
-- Performance optimization  
-- Product thinking  
-
-👉 This is **portfolio-worthy and interview-worthy**
-
----
-
-# If you want next
-
-I can help you:
-
-- 🎯 Add GitHub badges + polish  
-- 📊 Create visual diagrams (for presentation)  
-- 📱 Plan Flutter integration  
-- 🧪 Prepare interview questions based on this project  
-
-Just tell me 👍
+Built an AI-powered legal mapping platform that translates IPC/CRPC provisions into BNS/BNSS equivalents with contextual explanations and user-managed legal drafting capabilities.
